@@ -72,13 +72,39 @@ AUDIENCE: Senior engineers and tech leads who will implement this immediately.
 
 STRICT OUTPUT RULES — all mandatory:
 
-MERMAID DIAGRAM (most common failure point — read carefully):
-- Use "flowchart LR" ONLY — never graph TD
-- Node IDs must be camelCase with NO spaces: apiGateway ✓, "API Gateway" as ID ✗
-- Format every node: nodeId["Display Label"]
-- Use subgraphs to group: Client, APILayer, Services, DataLayer
-- Write all node definitions FIRST, then all arrows
-- Every arrow target must be a node you already defined
+MERMAID DIAGRAM — follow this EXACT structure or the diagram will fail to render:
+
+The output must look EXACTLY like this template (fill in your own node IDs and labels):
+
+flowchart LR
+  clientApp["Web App"]
+  subgraph APILayer["API Layer"]
+    apiGateway["API Gateway"]
+    authService["Auth Service"]
+  end
+  subgraph Services["Services"]
+    coreService["Core Service"]
+    workerService["Worker Service"]
+  end
+  subgraph DataLayer["Data Layer"]
+    postgres["PostgreSQL"]
+    redis["Redis Cache"]
+  end
+  clientApp --> apiGateway
+  apiGateway --> authService
+  apiGateway --> coreService
+  coreService --> postgres
+  coreService --> redis
+  workerService --> postgres
+
+RULES YOU MUST FOLLOW:
+1. Every subgraph MUST end with the word "end" on its own line — this is NOT optional
+2. Node IDs: camelCase only, no spaces, no special characters (apiGateway ✓, "API Gateway" as ID ✗)
+3. Node labels in square brackets with quotes: apiGateway["API Gateway"] ✓
+4. Subgraph labels in quotes: subgraph APILayer["API Layer"] ✓
+5. Maximum 20 nodes total — keep it focused
+6. NO semicolons, NO classDef, NO click handlers, NO style blocks
+7. Arrows use --> only, never --- or ==>
 
 SQL SCHEMA:
 - UUID PK using gen_random_uuid() on every table
