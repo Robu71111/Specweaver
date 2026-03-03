@@ -154,15 +154,27 @@ function MermaidDiagram({ code, darkMode }: { code: string; darkMode: boolean })
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [svgReady, setSvgReady] = useState(false);
 
   useEffect(() => {
     if (!code || !ref.current) return;
-    setError(null); setVisible(false);
+    setError(null); setVisible(false); setSvgReady(false);
     (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
+        // Suppress Mermaid's built-in error toast that renders at page bottom
+        const style = document.createElement("style");
+        style.textContent = `
+          #d${Math.random().toString(36).slice(2)},
+          [id^="dmermaid"], .mermaid-error,
+          body > div[style*="font-family"][style*="position:fixed"],
+          body > div[style*="font-family"][style*="position: fixed"] { display: none !important; }
+        `;
+        document.head.appendChild(style);
+
         mermaid.initialize({
           startOnLoad: false,
+          suppressErrorRendering: true,
           theme: darkMode ? "dark" : "default",
           themeVariables: darkMode
             ? { primaryColor:"#1e40af", primaryTextColor:"#e2e8f0",
@@ -176,13 +188,81 @@ function MermaidDiagram({ code, darkMode }: { code: string; darkMode: boolean })
         });
         const id = `mm-${Math.random().toString(36).slice(2)}`;
         const { svg } = await mermaid.render(id, code);
-        if (ref.current) { ref.current.innerHTML = svg; setVisible(true); }
+        if (ref.current) {
+          ref.current.innerHTML = svg;
+          setVisible(true); setSvgReady(true);
+
+          // Hover: glow hovered node + highlight its edges, dim everything else
+          const svgEl = ref.current.querySelector("svg");
+          if (!svgEl) return;
+          const nodes = Array.from(svgEl.querySelectorAll(".node"));
+          const edges = Array.from(svgEl.querySelectorAll(".edgePath, .flowchart-link"));
+
+          const glowColor = darkMode
+            ? "drop-shadow(0 0 10px rgba(0,200,255,0.95)) drop-shadow(0 0 22px rgba(0,180,255,0.55))"
+            : "drop-shadow(0 0 8px rgba(99,102,241,0.85)) drop-shadow(0 0 18px rgba(99,102,241,0.45))";
+          const edgeGlow = darkMode
+            ? "drop-shadow(0 0 5px rgba(0,200,255,0.8))"
+            : "drop-shadow(0 0 4px rgba(99,102,241,0.7))";
+
+          // Reset helper
+          const resetAll = () => {
+            nodes.forEach(n => { (n as HTMLElement).style.opacity="1"; (n as HTMLElement).style.filter="none"; (n as HTMLElement).style.transition="opacity 0.18s, filter 0.18s"; });
+            edges.forEach(e => { (e as HTMLElement).style.opacity="1"; (e as HTMLElement).style.filter="none"; (e as HTMLElement).style.transition="opacity 0.18s, filter 0.18s"; });
+          };
+
+          nodes.forEach(node => {
+            (node as HTMLElement).style.cursor = "pointer";
+            (node as HTMLElement).style.transition = "opacity 0.18s, filter 0.18s";
+            node.addEventListener("mouseenter", () => {
+              // Dim all nodes and edges first
+              nodes.forEach(n => { (n as HTMLElement).style.opacity="0.15"; (n as HTMLElement).style.filter="none"; });
+              edges.forEach(e => { (e as HTMLElement).style.opacity="0.08"; (e as HTMLElement).style.filter="none"; });
+              // Bright glow on hovered node
+              (node as HTMLElement).style.opacity = "1";
+              (node as HTMLElement).style.filter = glowColor;
+              // Highlight all edges at medium opacity with glow
+              edges.forEach(e => { (e as HTMLElement).style.opacity="0.8"; (e as HTMLElement).style.filter=edgeGlow; });
+            });
+          });
+
+          // Single container-level mouseleave — much cleaner than per-node
+          svgEl.addEventListener("mouseleave", resetAll);
+        }
       } catch (e) {
-        setError("Diagram syntax error — showing raw source.");
+        setError("Diagram render error — AI generated invalid syntax. Try generating again.");
         console.error(e);
       }
     })();
   }, [code, darkMode]);
+
+  const downloadPng = () => {
+    const svgEl = ref.current?.querySelector("svg");
+    if (!svgEl) return;
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const scale = 2;
+    const bbox = svgEl.getBoundingClientRect();
+    const canvas = document.createElement("canvas");
+    canvas.width = (bbox.width || 900) * scale;
+    canvas.height = (bbox.height || 600) * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = darkMode ? "#080f1e" : "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const blob = new Blob([svgData], { type:"image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "specweaver-diagram.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = url;
+  };
 
   if (error) return (
     <div className={`rounded-xl p-4 border ${darkMode ? "bg-red-950/30 border-red-800 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
@@ -194,12 +274,23 @@ function MermaidDiagram({ code, darkMode }: { code: string; darkMode: boolean })
   );
 
   return (
-    <div ref={ref} className={`w-full overflow-x-auto rounded-xl p-3 sm:p-4 transition-opacity duration-500
-      ${darkMode
-        ? "bg-gray-950/50 border border-blue-500/20 [&_svg]:drop-shadow-[0_0_8px_rgba(59,130,246,.5)]"
-        : "bg-white/80 border border-indigo-100"}
-      ${visible ? "opacity-100" : "opacity-0"}`}
-    />
+    <div className="relative">
+      {svgReady && (
+        <button onClick={downloadPng}
+          className={`absolute top-2 right-2 z-10 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-mono transition-all ${
+            darkMode
+              ? "bg-cyan-950/90 border border-cyan-700/60 text-cyan-300 hover:bg-cyan-900 hover:border-cyan-400"
+              : "bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100"
+          }`}
+          style={darkMode ? {boxShadow:"0 0 12px rgba(0,200,255,0.2)"} : {}}>
+          <Download size={11}/> Download PNG
+        </button>
+      )}
+      <div ref={ref} className={`w-full overflow-x-auto rounded-xl p-3 sm:p-4 transition-opacity duration-500
+        ${darkMode ? "bg-gray-950/50 border border-blue-500/20" : "bg-white/80 border border-indigo-100"}
+        ${visible ? "opacity-100" : "opacity-0"}`}
+      />
+    </div>
   );
 }
 
@@ -473,6 +564,35 @@ function EngineRoomOutput({ data }: { data: EngineRoomData }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // ROOT PAGE
 // ═════════════════════════════════════════════════════════════════════════════
+// ─── Shared Specweaver Logo SVG ───────────────────────────────────────────────
+// A hexagonal "weave" mark — six nodes connected in a circuit pattern.
+// Works on both light (Boardroom) and dark (Engine Room) backgrounds.
+function SpecweaverLogo({ size = 28, dark = false }: { size?: number; dark?: boolean }) {
+  const c = dark ? "#22d3ee" : "#6366f1";   // cyan for dark, indigo for light
+  const dim = dark ? "rgba(0,200,255,0.25)" : "rgba(99,102,241,0.25)";
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-label="Specweaver">
+      {/* Outer hexagon */}
+      <polygon points="16,2 28,9 28,23 16,30 4,23 4,9"
+        fill="none" stroke={c} strokeWidth="1.4" opacity="0.9"/>
+      {/* Inner ring */}
+      <polygon points="16,7 23,11.5 23,20.5 16,25 9,20.5 9,11.5"
+        fill={dim} stroke={c} strokeWidth="0.9" opacity="0.7"/>
+      {/* Six corner nodes */}
+      {[[16,2],[28,9],[28,23],[16,30],[4,23],[4,9]].map(([cx,cy],i) => (
+        <circle key={i} cx={cx} cy={cy} r="2" fill={c} opacity="0.95"/>
+      ))}
+      {/* Centre node */}
+      <circle cx="16" cy="16" r="3" fill={c}/>
+      {/* Connecting spokes from centre to alternating corners */}
+      {[[16,2],[28,23],[4,23]].map(([x2,y2],i) => (
+        <line key={i} x1="16" y1="16" x2={x2} y2={y2}
+          stroke={c} strokeWidth="0.8" opacity="0.5"/>
+      ))}
+    </svg>
+  );
+}
+
 export default function Specweaver() {
   const [viewMode, setViewMode]           = useState<ViewMode>("Boardroom");
   const [prompt, setPrompt]               = useState("");
@@ -519,8 +639,8 @@ export default function Specweaver() {
       <header className="border-b border-slate-200/80 bg-white/70 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center">
-              <Layers size={15} className="text-white"/>
+            <div className="flex items-center justify-center">
+              <SpecweaverLogo size={30}/>
             </div>
             <div>
               <h1 className="text-sm font-semibold text-slate-900">Specweaver</h1>
@@ -577,6 +697,18 @@ export default function Specweaver() {
         )}
       </main>
 
+      {/* ── Boardroom Footer ── */}
+      <footer style={{borderTop:"1px solid #e2e8f0", background:"#f8fafc"}} className="py-5 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <SpecweaverLogo size={22}/>
+            <span className="text-sm font-semibold text-slate-700" style={{fontFamily:"'DM Sans',sans-serif"}}>Specweaver</span>
+          </div>
+          <p className="text-xs text-slate-400">© 2026 Specweaver. All rights reserved.</p>
+          <p className="text-xs text-slate-400">Architecture Intelligence Platform</p>
+        </div>
+      </footer>
+
       <style>{`
         @keyframes tipIn { from{opacity:0;transform:translateX(-50%) translateY(4px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
         @keyframes slideDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
@@ -592,26 +724,25 @@ export default function Specweaver() {
     <div className="min-h-screen text-slate-300"
       style={{background:"#060a10", fontFamily:"'Fira Code','IBM Plex Mono',monospace"}}>
 
-      {/* Page-level dim grid so the whole bg has texture */}
-      {/* Page-level bright grid */}
-    <div aria-hidden style={{
-      position:"fixed", inset:0, pointerEvents:"none", zIndex:0,
-      backgroundImage:`
-        linear-gradient(rgba(0,200,255,0.14) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,200,255,0.14) 1px, transparent 1px),
-      linear-gradient(rgba(0,230,255,0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,230,255,0.07) 1px, transparent 1px)
-      `,
-      backgroundSize:"40px 40px, 40px 40px, 120px 120px, 120px 120px",
-      animation:"bgGridPulse 4s ease-in-out infinite",
-    }}/>
+      {/* Page-level bright animated grid */}
+      <div aria-hidden style={{
+        position:"fixed", inset:0, pointerEvents:"none", zIndex:0,
+        backgroundImage:`
+          linear-gradient(rgba(0,200,255,0.14) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,200,255,0.14) 1px, transparent 1px),
+          linear-gradient(rgba(0,230,255,0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,230,255,0.07) 1px, transparent 1px)
+        `,
+        backgroundSize:"40px 40px, 40px 40px, 120px 120px, 120px 120px",
+        animation:"bgGridPulse 4s ease-in-out infinite",
+      }}/>
+
       <header className="border-b border-cyan-900/50 bg-black/80 backdrop-blur-xl sticky top-0 z-40"
         style={{boxShadow:"0 1px 0 rgba(0,200,255,0.15)"}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 border border-cyan-500/70 rounded flex items-center justify-center"
-              style={{boxShadow:"0 0 14px rgba(0,200,255,0.5)"}}>
-              <Cpu size={15} className="text-cyan-400"/>
+            <div className="flex items-center justify-center" style={{filter:"drop-shadow(0 0 8px rgba(0,200,255,0.6))"}}>
+              <SpecweaverLogo size={30} dark/>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -665,7 +796,7 @@ export default function Specweaver() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-cyan-800 font-mono">
                 <span>MODE: <span className="text-cyan-400">ARCHITECT</span></span>
                 <span>DEPTH: <span className="text-green-400">MAX</span></span>
-                <span>AI: <span className="text-cyan-400">OpenRouter</span></span>
+                <span>AI: <span className="text-cyan-400">OPENROUTER</span></span>
                 <span className="hidden sm:inline">⌘↵ execute</span>
               </div>
               <WeaveButton loading={loading} disabled={loading||!prompt.trim()} onClick={handleGenerate} dark/>
@@ -703,14 +834,41 @@ export default function Specweaver() {
         )}
       </main>
 
+      {/* ── Engine Room Footer ────────────────────────────────────── */}
+      <footer className="relative z-10" style={{
+        borderTop:"1px solid rgba(0,200,255,0.12)",
+        background:"rgba(3,8,18,0.95)",
+        backdropFilter:"blur(8px)",
+      }}>
+        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div style={{filter:"drop-shadow(0 0 6px rgba(0,200,255,0.5))"}}>
+              <SpecweaverLogo size={24} dark/>
+            </div>
+            <span className="text-sm font-bold text-cyan-300 tracking-widest font-mono">SPECWEAVER</span>
+          </div>
+          <p className="text-xs text-cyan-800 font-mono tracking-wide">© 2026 Specweaver. All rights reserved.</p>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
+            <p className="text-xs text-cyan-800 font-mono">// Architecture Intelligence Platform</p>
+          </div>
+        </div>
+      </footer>
+
       <style>{`
-        @keyframes slideDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeInUp  { from{opacity:0;transform:translateY(16px)}  to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmer   { from{left:-40%} to{left:140%} }
-        @keyframes gradMove  { 0%{background-position:0%} 100%{background-position:200%} }
-        @keyframes tipIn     { from{opacity:0;transform:translateX(-50%) translateY(4px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        @keyframes bgGridPulse  { 0%,100%{opacity:0.75} 50%{opacity:1} }
+        @keyframes slideDown    { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInUp     { from{opacity:0;transform:translateY(16px)}  to{opacity:1;transform:translateY(0)} }
+        @keyframes shimmer      { from{left:-40%} to{left:140%} }
+        @keyframes gradMove     { 0%{background-position:0%} 100%{background-position:200%} }
+        @keyframes tipIn        { from{opacity:0;transform:translateX(-50%) translateY(4px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
         @keyframes skeletonPulse { 0%,100%{opacity:.25} 50%{opacity:.55} }
-        @keyframes bgGridPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
+        @keyframes gridBreathe  { 0%,100%{opacity:0.7} 50%{opacity:1} }
+        @keyframes scanH        { 0%{background-position:-60px 0} 100%{background-position:100% 0} }
+        @keyframes scanV        { 0%{background-position:0 -80px} 100%{background-position:0 100%} }
+        @keyframes borderPulse  { 0%,100%{box-shadow:0 0 18px rgba(0,210,255,0.55),inset 0 0 18px rgba(0,210,255,0.12)} 50%{box-shadow:0 0 38px rgba(0,230,255,0.95),inset 0 0 32px rgba(0,230,255,0.25)} }
+        @keyframes cornerPulse  { 0%,100%{opacity:0.7} 50%{opacity:1;box-shadow:0 0 16px rgba(0,230,255,1)} }
+        @keyframes dotPulse     { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7} 50%{transform:translate(-50%,-50%) scale(1.5);opacity:1} }
       `}</style>
     </div>
   );
