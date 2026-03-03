@@ -527,7 +527,7 @@ export default function Specweaver() {
 
   // ── BOARDROOM ──────────────────────────────────────────────────────────────
   if (viewMode === "Boardroom") return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex flex-col" style={{fontFamily:"'DM Sans','Helvetica Neue',sans-serif"}}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30" style={{fontFamily:"'DM Sans','Helvetica Neue',sans-serif"}}>
       <header className="border-b border-slate-200/80 bg-white/70 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -545,7 +545,7 @@ export default function Specweaver() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="mb-8 sm:mb-12 text-center" style={{animation:"slideDown .5s ease both"}}>
           <p className="text-xs font-semibold tracking-widest text-indigo-500 uppercase mb-2 sm:mb-3">Strategic Architecture Overview</p>
           <h2 className="text-3xl sm:text-5xl font-light text-slate-900 mb-3">The Boardroom</h2>
@@ -587,7 +587,7 @@ export default function Specweaver() {
 
   // ── ENGINE ROOM ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen text-slate-300 flex flex-col" style={{background:"#060a10",fontFamily:"'Fira Code','IBM Plex Mono',monospace"}}>
+    <div className="min-h-screen text-slate-300" style={{background:"#060a10",fontFamily:"'Fira Code','IBM Plex Mono',monospace"}}>
       {/* Page background grid */}
       <div aria-hidden style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,backgroundImage:"linear-gradient(rgba(0,200,255,0.14) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.14) 1px,transparent 1px),linear-gradient(rgba(0,230,255,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(0,230,255,0.07) 1px,transparent 1px)",backgroundSize:"40px 40px,40px 40px,120px 120px,120px 120px",animation:"bgGridPulse 4s ease-in-out infinite"}}/>
 
@@ -611,7 +611,7 @@ export default function Specweaver() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 relative z-10 flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 relative z-10">
         <div className="mb-7 sm:mb-10" style={{animation:"slideDown .5s ease both"}}>
           <p className="text-xs text-cyan-500 tracking-widest uppercase mb-1.5 font-mono">// System Architecture Generator</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-1.5" style={{textShadow:"0 0 40px rgba(0,200,255,0.6)"}}>The Engine Room</h2>
@@ -647,7 +647,7 @@ export default function Specweaver() {
         {!engineData && !loading && <div className="text-center py-16 sm:py-24"><Cpu size={44} className="mx-auto mb-4" style={{color:"rgba(0,160,255,0.25)",filter:"drop-shadow(0 0 16px rgba(0,200,255,0.3))"}}/><p className="text-xs text-cyan-800 font-mono">// AWAITING INPUT — SYSTEM READY</p></div>}
       </main>
 
-      <footer className="relative z-10 mt-auto" style={{borderTop:"1px solid rgba(0,200,255,0.12)",background:"rgba(3,8,18,0.95)"}}>
+      <footer className="relative z-10" style={{borderTop:"1px solid rgba(0,200,255,0.12)",background:"rgba(3,8,18,0.95)"}}>
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div style={{filter:"drop-shadow(0 0 6px rgba(0,200,255,0.5))"}}>
