@@ -1,6 +1,6 @@
 {
   "name": "specweaver",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
     "lucide-react": "^0.263.1",
     "mermaid": "^11.0.0",
     "next": "^14.2.0",

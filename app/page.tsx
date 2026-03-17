@@ -572,8 +572,8 @@ export default function Specweaver() {
       <footer className="border-t border-slate-200 bg-slate-50 py-5 px-6 mt-auto">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2"><SpecweaverLogo size={20}/><span className="text-sm font-semibold text-slate-700">Specweaver</span></div>
-          <p className="text-xs text-slate-400">© 2026 Specweaver. All rights reserved.</p>
-          <p className="text-xs text-slate-400">Architecture Intelligence Platform</p>
+          <p className="text-xs text-slate-400">Part of the <a href="https://ba-copilot-mvp.vercel.app" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-700 transition-colors">BA Copilot</a> platform</p>
+          <p className="text-xs text-slate-400">&copy; 2026 Specweaver. All rights reserved.</p>
         </div>
       </footer>
 
@@ -655,11 +655,8 @@ export default function Specweaver() {
             </div>
             <span className="text-sm font-bold text-cyan-300 tracking-widest font-mono">SPECWEAVER</span>
           </div>
-          <p className="text-xs text-cyan-800 font-mono">© 2026 Specweaver. All rights reserved.</p>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
-            <p className="text-xs text-cyan-800 font-mono">// Architecture Intelligence Platform</p>
-          </div>
+          <p className="text-xs text-cyan-800 font-mono">Part of the <a href="https://ba-copilot-mvp.vercel.app" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:text-cyan-300 transition-colors">BA Copilot</a> platform</p>
+          <p className="text-xs text-cyan-800 font-mono">&copy; 2026 Specweaver</p>
         </div>
       </footer>
 
