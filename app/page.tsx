@@ -634,7 +634,6 @@ export default function Specweaver() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-cyan-800 font-mono">
                 <span>MODE: <span className="text-cyan-400">ARCHITECT</span></span>
                 <span>DEPTH: <span className="text-green-400">MAX</span></span>
-                <span>AI: <span className="text-cyan-400">OPENROUTER</span></span>
               </div>
               <WeaveButton loading={loading} disabled={loading||!prompt.trim()} onClick={handleGenerate} dark/>
             </div>
