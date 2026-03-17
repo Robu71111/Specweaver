@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const FREE_MODELS = [
+  "openrouter/free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "mistralai/mistral-small-3.1-24b-instruct:free",
   "google/gemma-3-27b-it:free",
